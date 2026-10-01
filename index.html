@@ -51,7 +51,7 @@ tfoot td{font-weight:700;color:var(--p2)}
 </style></head>
 <body>
 <header>
- <div><h1>🌱 Tablero de Cosecha</h1><p><span class="dot" id="dot"></span><span id="upd">Conectando con Google Sheets…</span></p></div>
+ <div><h1>🌱 Tablero de Cosecha</h1><p><span class="dot" id="dot"></span><span id="upd">Cargando datos…</span></p></div>
  <button id="th" type="button">🌙 Modo oscuro</button>
 </header>
 <main>
@@ -82,7 +82,7 @@ tfoot td{font-weight:700;color:var(--p2)}
 </main>
 <script>
 const SHEET='1wSDzmBkWzBdjrhq3gZayjrNqdBg6jjudQsnoY6FFvUE',SRV='Google Sheets',SD='Sin dato';
-const CFG={CULT:'Poroto',SUP:{Negro:250,Cranberry:95}}; // superficie total por genética (según hoja LEEME)
+const CFG={CULT:'Poroto',SUP:{Negro:250,Cranberry:95}};
 const PAL=['#7c3aed','#f59e0b','#10b981','#ec4899','#06b6d4','#ef4444','#84cc16'];
 let RAW=[],OBJ=[],F={camp:'',prov:'',loc:new Set(),cult:'',gen:'',ciclo:''},GC={},CH={};
 const $=s=>document.querySelector(s),root=document.documentElement;
@@ -95,14 +95,11 @@ const dm=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padSt
 const fd=d=>dm(d)+'/'+d.getFullYear();
 const camp=d=>{const y=d.getFullYear(),a=d.getMonth()>=6?y:y-1;return String(a%100).padStart(2,'0')+'-'+String((a+1)%100).padStart(2,'0')};
 const f0=n=>Math.round(n||0).toLocaleString('es-UY'),pc=(a,b)=>b>0?Math.round(a/b*100):null;
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function parseRows(v){if(!v.length)return[];const h=v[0].map(nz);
- const g=(r,n)=>{const i=h.indexOf(n);return i>=0&&r[i]!=null?String(r[i]).trim():''};
- return v.slice(1).map(r=>{const d=pdate(g(r,'fecha'));if(!d)return null;const va=g(r,'variedad');
-  return{d,lote:g(r,'lote')||'—',gen:g(r,'genetica')||va||SD,ha:num(g(r,'hectareas')),bol:num(g(r,'bolsas')),kg:num(g(r,'kg')),
-  camp:g(r,'campana')||camp(d),prov:g(r,'provincia')||SD,loc:g(r,'localidad')||SD,cult:g(r,'cultivo')||CFG.CULT,ciclo:g(r,'ciclo')||SD,ant:g(r,'antecesor')||SD}}).filter(Boolean)}
-function parseObj(v){if(!v.length)return[];const h=v[0].map(nz),c=n=>h.indexOf(n);
- return v.slice(1).map(r=>{const d=pdate(r[c('semana')]);return d?{w:iso(mon(new Date(d.getTime()+432e5))),kg:num(r[c('objetivo_kg')]),ha:num(r[c('objetivo_hectareas')]),bol:num(r[c('objetivo_bolsas')])}:null}).filter(Boolean)}
+const esc=s=>String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function parseRows(v){if(!v.length)return[];const h=v[0].map(nz);const g=(r,n)=>{const i=h.indexOf(n);return i>=0&&r[i]!=null?String(r[i]).trim():''};return v.slice(1).map(r=>{const d=pdate(g(r,'fecha'));if(!d)return null;const va=g(r,'variedad');return{d,lote:g(r,'lote')||'—',gen:g(r,'genetica')||va||SD,ha:num(g(r,'hectareas')),bol:num(g(r,'bolsas')),kg:num(g(r,'kg')),camp:g(r,'campana')||camp(d),prov:g(r,'provincia')||SD,loc:g(r,'localidad')||SD,cult:g(r,'cultivo')||CFG.CULT,ciclo:g(r,'ciclo')||SD,ant:g(r,'antecesor')||SD}}).filter(Boolean)}
+function parseObj(v){if(!v.length)return[];const h=v[0].map(nz),c=n=>h.indexOf(n);return v.slice(1).map(r=>{const d=pdate(r[c('semana')]);return d?{w:iso(mon(new Date(d.getTime()+432e5))),kg:num(r[c('objetivo_kg')]),ha:num(r[c('objetivo_hectareas')]),bol:num(r[c('objetivo_bolsas')])}:null}).filter(Boolean)}
+function parseRowsFromObjects(rows){return (rows||[]).map(r=>{const d=pdate(r.fecha);if(!d)return null;return{d,lote:r.lote||'—',gen:r.genetica||r.variedad||SD,ha:num(r.hectareas),bol:num(r.bolsas),kg:num(r.kg),camp:r.campana||camp(d),prov:r.provincia||SD,loc:r.localidad||SD,cult:r.cultivo||CFG.CULT,ciclo:r.ciclo||SD,ant:r.antecesor||SD}}).filter(Boolean)}
+function parseObjectivesFromObjects(rows){return (rows||[]).map(r=>{const d=pdate(r.semana||r.fecha);if(!d)return null;return{w:iso(mon(d)),kg:num(r.objetivo_kg||r.kg),ha:num(r.objetivo_hectareas||r.hectareas),bol:num(r.objetivo_bolsas||r.bolsas)}}).filter(Boolean)}
 function agg(rows,kf){const m=new Map();rows.forEach(r=>{const k=kf(r),o=m.get(k)||{k,kg:0,ha:0,bol:0,gen:r.gen};o.kg+=r.kg;o.ha+=r.ha;o.bol+=r.bol;m.set(k,o)});return[...m.values()]}
 function buildFilters(){
  const U=k=>[...new Set(RAW.map(r=>r[k]))].sort();
@@ -110,70 +107,101 @@ function buildFilters(){
   $('#f-'+k).innerHTML=`<option value="">${all}</option>`+U(k).map(x=>`<option${F[k]===x?' selected':''}>${esc(x)}</option>`).join('')});
  $('#locl').innerHTML=U('loc').map(x=>`<label><input type="checkbox" value="${esc(x)}"${F.loc.has(x)?' checked':''}> ${esc(x)}</label>`).join('');
  $('#locs').textContent=F.loc.size?`${F.loc.size} seleccionada(s)`:'Todas';
- GC={};U('gen').forEach((g,i)=>GC[g]=PAL[i%PAL.length])}
+ GC={};U('gen').forEach((g,i)=>GC[g]=PAL[i%PAL.length])
+}
 function render(){
  if(!RAW.length)return;
- const cs=getComputedStyle(root),tx=cs.getPropertyValue('--tx').trim(),mut=cs.getPropertyValue('--mut').trim(),bd=cs.getPropertyValue('--bd').trim(),pp=cs.getPropertyValue('--p2').trim();
+ const cs=getComputedStyle(root),mut=cs.getPropertyValue('--mut').trim(),bd=cs.getPropertyValue('--bd').trim(),pp=cs.getPropertyValue('--p2').trim();
  const rows=RAW.filter(r=>(!F.camp||r.camp===F.camp)&&(!F.prov||r.prov===F.prov)&&(!F.loc.size||F.loc.has(r.loc))&&(!F.cult||r.cult===F.cult)&&(!F.gen||r.gen===F.gen)&&(!F.ciclo||r.ciclo===F.ciclo));
  const T=rows.reduce((a,r)=>(a.kg+=r.kg,a.ha+=r.ha,a.bol+=r.bol,a),{kg:0,ha:0,bol:0});
  const days=agg(rows,r=>iso(r.d)).sort((a,b)=>a.k<b.k?-1:1),best=days.slice().sort((a,b)=>b.kg-a.kg)[0];
  const kpi=(l,v,s)=>`<div class="card k"><span>${l}</span><b>${v}</b><small>${s||'&nbsp;'}</small></div>`;
- $('#kpis').innerHTML=kpi('Kg cosechados',f0(T.kg),f0(T.kg/1000)+' toneladas')+kpi('Hectáreas',f0(T.ha),'cosechadas')+kpi('Rinde medio',f0(T.ha?T.kg/T.ha:0),'kg/ha')+kpi('Bolsas',f0(T.bol),'bolsas de 56 kg')
-  +kpi('Días de trilla',days.length,days.length?f0(T.kg/days.length)+' kg/día':'')+kpi('Mejor día',best?f0(best.kg):'–',best?'kg · '+fd(new Date(best.k+'T00:00')):'')+kpi('Lotes',new Set(rows.map(r=>r.lote)).size,'trillados');
- // semana actual (última fecha con cosecha)
+ $('#kpis').innerHTML=kpi('Kg cosechados',f0(T.kg),f0(T.kg/1000)+' toneladas')+kpi('Hectáreas',f0(T.ha),'cosechadas')+kpi('Rinde medio',f0(T.ha?T.kg/T.ha:0),'kg/ha')+kpi('Bolsas',f0(T.bol),'bolsas de 56 kg')+kpi('Días de trilla',days.length,days.length?f0(T.kg/days.length)+' kg/día':'')+kpi('Mejor día',best?f0(best.kg):'–',best?'kg · '+fd(new Date(best.k+'T00:00')):'')+kpi('Lotes',new Set(rows.map(r=>r.lote)).size,'trillados');
  const ref=rows.length?new Date(Math.max(...rows.map(r=>r.d))):null;let wk='<p class="mut">Sin datos.</p>';
  if(ref){const w=iso(mon(ref)),rw=rows.filter(r=>iso(mon(r.d))===w),R=rw.reduce((a,r)=>(a.kg+=r.kg,a.ha+=r.ha,a.bol+=r.bol,a),{kg:0,ha:0,bol:0}),O=OBJ.find(o=>o.w===w)||{kg:0,ha:0,bol:0};
-  wk=`<p class="mut">Semana del ${fd(new Date(w+'T00:00'))} · a la fecha ${fd(ref)}</p>`+[['Kg','kg'],['Hectáreas','ha'],['Bolsas','bol']].map(([l,k])=>{const p=pc(R[k],O[k]);
-   return `<div class="row"><div><span>${l}</span><span>${f0(R[k])} / ${O[k]?f0(O[k]):'sin objetivo'}${p!=null?' · <b>'+p+'%</b>':''}</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%"></i></div></div>`}).join('')}
+  wk=`<p class="mut">Semana del ${fd(new Date(w+'T00:00'))} · a la fecha ${fd(ref)}</p>`+[['Kg','kg'],['Hectáreas','ha'],['Bolsas','bol']].map(([l,k])=>{const p=pc(R[k],O[k]);return `<div class="row"><div><span>${l}</span><span>${f0(R[k])} / ${O[k]?f0(O[k]):'sin objetivo'}${p!=null?' · <b>'+p+'%</b>':''}</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%"></i></div></div>`}).join('')}
  $('#wk').innerHTML=wk;
- // por genética
- $('#gn').innerHTML=agg(rows,r=>r.gen).map(o=>{const s=CFG.SUP[o.k],p=pc(o.ha,s);
-  return `<div class="row"><div><span><i class="tag" style="background:${GC[o.k]}">${esc(o.k)}</i></span><span>${f0(o.ha)}${s?' / '+f0(s)+' ha · <b>'+p+'%</b>':' ha'} · ${f0(o.kg)} kg · ${f0(o.ha?o.kg/o.ha:0)} kg/ha</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%;background:${GC[o.k]}"></i></div></div>`}).join('')||'<p class="mut">Sin datos.</p>';
+ $('#gn').innerHTML=agg(rows,r=>r.gen).map(o=>{const s=CFG.SUP[o.k],p=pc(o.ha,s);return `<div class="row"><div><span><i class="tag" style="background:${GC[o.k]}">${esc(o.k)}</i></span><span>${f0(o.ha)}${s?' / '+f0(s)+' ha · <b>'+p+'%</b>':' ha'} · ${f0(o.kg)} kg · ${f0(o.ha?o.kg/o.ha:0)} kg/ha</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%;background:${GC[o.k]}"></i></div></div>`}).join('')||'<p class="mut">Sin datos.</p>';
  if(!window.Chart)return;
  Chart.defaults.color=mut;Chart.defaults.borderColor=bd;
  const mk=(id,cfg)=>{CH[id]&&CH[id].destroy();cfg.options=Object.assign({responsive:true,maintainAspectRatio:false},cfg.options);CH[id]=new Chart($('#'+id),cfg)};
  let ac=0;const gens=[...new Set(rows.map(r=>r.gen))];
- mk('c1',{data:{labels:days.map(d=>dm(new Date(d.k+'T00:00'))),datasets:[...gens.map(g=>({type:'bar',label:g,stack:'s',backgroundColor:GC[g],borderRadius:3,
-  data:days.map(d=>rows.filter(r=>iso(r.d)===d.k&&r.gen===g).reduce((a,r)=>a+r.kg,0))})),
-  {type:'line',label:'Acumulado',yAxisID:'y1',borderColor:pp,backgroundColor:pp,pointRadius:2,tension:.25,data:days.map(d=>ac+=d.kg)}]},
-  options:{scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'kg/día'}},y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'kg acum.'}}}}});
+ mk('c1',{data:{labels:days.map(d=>dm(new Date(d.k+'T00:00'))),datasets:[...gens.map(g=>({type:'bar',label:g,stack:'s',backgroundColor:GC[g],borderRadius:3,data:days.map(d=>rows.filter(r=>iso(r.d)===d.k&&r.gen===g).reduce((a,r)=>a+r.kg,0))})),{type:'line',label:'Acumulado',yAxisID:'y1',borderColor:pp,backgroundColor:pp,pointRadius:2,tension:.25,data:days.map(d=>ac+=d.kg)}]},options:{scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'kg/día'}},y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'kg acum.'}}}}});
  const wr=agg(rows,r=>iso(mon(r.d))),ws=[...new Set([...wr.map(x=>x.k),...OBJ.filter(o=>o.kg>0).map(o=>o.w)])].sort();
- mk('c2',{type:'bar',data:{labels:ws.map(w=>dm(new Date(w+'T00:00'))),datasets:[{label:'Real',backgroundColor:pp,borderRadius:4,data:ws.map(w=>(wr.find(x=>x.k===w)||{kg:0}).kg)},
-  {label:'Objetivo',backgroundColor:'#c4b5fd',borderRadius:4,data:ws.map(w=>(OBJ.find(o=>o.w===w)||{kg:0}).kg)}]},options:{scales:{x:{title:{display:true,text:'semana (lunes)'}}}}});
+ mk('c2',{type:'bar',data:{labels:ws.map(w=>dm(new Date(w+'T00:00'))),datasets:[{label:'Real',backgroundColor:pp,borderRadius:4,data:ws.map(w=>(wr.find(x=>x.k===w)||{kg:0}).kg)},{label:'Objetivo',backgroundColor:'#c4b5fd',borderRadius:4,data:ws.map(w=>(OBJ.find(o=>o.w===w)||{kg:0}).kg)}]},options:{scales:{x:{title:{display:true,text:'semana (lunes)'}}}}});
  const lt=agg(rows,r=>r.lote).map(o=>({...o,r:o.ha?o.kg/o.ha:0})).sort((a,b)=>b.r-a.r);
  $('#c3w').style.height=Math.max(260,lt.length*28+40)+'px';
  mk('c3',{type:'bar',data:{labels:lt.map(o=>o.k),datasets:[{label:'kg/ha',data:lt.map(o=>Math.round(o.r)),backgroundColor:lt.map(o=>GC[o.gen]),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}}}});
  const an=agg(rows,r=>r.ant).map(o=>({...o,r:o.ha?o.kg/o.ha:0})).sort((a,b)=>b.r-a.r);
- mk('c4',{type:'bar',data:{labels:an.map(o=>o.k),datasets:[{label:'kg/ha',data:an.map(o=>Math.round(o.r)),backgroundColor:pp,borderRadius:4}]},
-  options:{plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>f0(an[c.dataIndex].ha)+' ha · '+f0(an[c.dataIndex].kg)+' kg'}}}}});
+ mk('c4',{type:'bar',data:{labels:an.map(o=>o.k),datasets:[{label:'kg/ha',data:an.map(o=>Math.round(o.r)),backgroundColor:pp,borderRadius:4}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>f0(an[c.dataIndex].ha)+' ha · '+f0(an[c.dataIndex].kg)+' kg'}}}}});
  $('#antn').textContent=an.length===1&&an[0].k===SD?'La hoja Cosecha no tiene columna "Antecesor": agregala (también Provincia, Localidad, Ciclo, Genética) y se completa sola.':'';
- // tabla
  const th=['Fecha','Lote','Cultivo','Genética','Ciclo','Antecesor','Provincia','Localidad','Campaña'],tn=['Ha','Bolsas','Kg','Kg/ha'];
  $('#tbl').innerHTML=`<table><thead><tr>${th.map(x=>`<th>${x}</th>`).join('')}${tn.map(x=>`<th class="n">${x}</th>`).join('')}</tr></thead><tbody>`+
   rows.slice().sort((a,b)=>b.d-a.d||(a.lote<b.lote?-1:1)).map(r=>`<tr><td>${fd(r.d)}</td><td>${esc(r.lote)}</td><td>${esc(r.cult)}</td><td><i class="tag" style="background:${GC[r.gen]}">${esc(r.gen)}</i></td><td>${esc(r.ciclo)}</td><td>${esc(r.ant)}</td><td>${esc(r.prov)}</td><td>${esc(r.loc)}</td><td>${esc(r.camp)}</td><td class="n">${f0(r.ha)}</td><td class="n">${f0(r.bol)}</td><td class="n">${f0(r.kg)}</td><td class="n">${f0(r.ha?r.kg/r.ha:0)}</td></tr>`).join('')+
-  `</tbody><tfoot><tr><td colspan="9">Total (${rows.length} registros)</td><td class="n">${f0(T.ha)}</td><td class="n">${f0(T.bol)}</td><td class="n">${f0(T.kg)}</td><td class="n">${f0(T.ha?T.kg/T.ha:0)}</td></tr></tfoot></table>`}
-// filtros
-document.addEventListener('change',e=>{const t=e.target;
- if(t.dataset.k){F[t.dataset.k]=t.value}else if(t.closest('#locl')){t.checked?F.loc.add(t.value):F.loc.delete(t.value);$('#locs').textContent=F.loc.size?`${F.loc.size} seleccionada(s)`:'Todas'}else return;render()});
+  `</tbody><tfoot><tr><td colspan="9">Total (${rows.length} registros)</td><td class="n">${f0(T.ha)}</td><td class="n">${f0(T.bol)}</td><td class="n">${f0(T.kg)}</td><td class="n">${f0(T.ha?T.kg/T.ha:0)}</td></tr></tfoot></table>`
+}
+
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset.k){F[t.dataset.k]=t.value}else if(t.closest('#locl')){t.checked?F.loc.add(t.value):F.loc.delete(t.value);$('#locs').textContent=F.loc.size?`${F.loc.size} seleccionada(s)`:'Todas'}else return;render()});
 $('#clr').onclick=()=>{F={camp:'',prov:'',loc:new Set(),cult:'',gen:'',ciclo:''};buildFilters();render()};
 document.addEventListener('click',e=>{if(!e.target.closest('#loc'))$('#loc').open=false});
-// tema
 const setTh=t=>{root.dataset.theme=t;$('#th').textContent=t==='dark'?'☀️ Modo claro':'🌙 Modo oscuro';try{localStorage.setItem('th',t)}catch(e){}render()};
 $('#th').onclick=()=>setTh(root.dataset.theme==='dark'?'light':'dark');
 {let t;try{t=localStorage.getItem('th')}catch(e){}root.dataset.theme=t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');$('#th').textContent=root.dataset.theme==='dark'?'☀️ Modo claro':'🌙 Modo oscuro'}
-// datos en vivo (conector Google Sheets)
 const msg=t=>{const m=$('#msg');m.textContent=t||'';m.style.display=t?'block':'none'};
 const ERR={needs_reauth:'Reconectá Google Sheets en Ajustes → Conectores.',server_not_connected:'Agregá el conector Google Sheets en Ajustes → Conectores.',not_in_manifest:'Permiso denegado para Google Sheets en este tablero.',blocked_by_policy:'Tu organización bloquea este conector.',server_unavailable:'Google Sheets no responde; se reintenta solo.'};
+async function loadStaticData(){
+  try{
+    const [cosechaRes, objetivosRes]=await Promise.all([
+      fetch('./data/cosecha.json', {cache: 'no-store'}),
+      fetch('./data/objetivos.json', {cache: 'no-store'})
+    ]);
+    if(!cosechaRes.ok || !objetivosRes.ok) throw new Error('Missing data files');
+    const cosecha = await cosechaRes.json();
+    const objetivos = await objetivosRes.json();
+    RAW = parseRowsFromObjects(cosecha);
+    OBJ = parseObjectivesFromObjects(objetivos);
+    $('#upd').textContent='Versión pública · datos desde GitHub Pages';
+    $('#dot').className='dot on';
+    msg('');
+    buildFilters();
+    render();
+    return true;
+  }catch(err){
+    const demo = [
+      {fecha:'01/02/2025',lote:'L-101',genetica:'Negro',hectareas:'12',bolsas:'120',kg:'6720',campana:'24-25',provincia:'San Luis',localidad:'Piedra Larga',cultivo:'Poroto',ciclo:'C1',antecesor:'Trigo'},
+      {fecha:'02/02/2025',lote:'L-101',genetica:'Negro',hectareas:'12',bolsas:'130',kg:'7280',campana:'24-25',provincia:'San Luis',localidad:'Piedra Larga',cultivo:'Poroto',ciclo:'C1',antecesor:'Trigo'},
+      {fecha:'03/02/2025',lote:'L-202',genetica:'Cranberry',hectareas:'8',bolsas:'90',kg:'5040',campana:'24-25',provincia:'Mendoza',localidad:'La Pampa',cultivo:'Poroto',ciclo:'C2',antecesor:'Maíz'},
+      {fecha:'04/02/2025',lote:'L-202',genetica:'Cranberry',hectareas:'8',bolsas:'95',kg:'5320',campana:'24-25',provincia:'Mendoza',localidad:'La Pampa',cultivo:'Poroto',ciclo:'C2',antecesor:'Maíz'}
+    ];
+    const demoObj = [
+      {semana:'01/02/2025',objetivo_kg:'12000'},
+      {semana:'08/02/2025',objetivo_kg:'15000'},
+      {semana:'15/02/2025',objetivo_kg:'18000'}
+    ];
+    RAW = parseRowsFromObjects(demo);
+    OBJ = parseObjectivesFromObjects(demoObj);
+    $('#upd').textContent='Demostración pública · reemplazá los datos reales';
+    $('#dot').className='dot on';
+    msg('No hay datos públicos cargados todavía. Reemplazá los archivos data/cosecha.json y data/objetivos.json con los tuyos.');
+    buildFilters();
+    render();
+    return false;
+  }
+}
 async function init(){
- const mcp=window.claude&&await claude.use('mcp');
- if(!mcp){$('#upd').textContent='Sin conexión';return msg('Abrí este tablero desde claude.ai con el conector Google Sheets activo para leer los datos en vivo.')}
- const w=(range,fn)=>mcp.watchTool(SRV,'get_values',{spreadsheetId:SHEET,range},ev=>{
-  if(ev.type==='data'){let p=ev.result.payload;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p=null}}
-   fn((p&&p.values)||[]);msg('');$('#dot').className='dot on';
-   $('#upd').textContent='En vivo · actualizado '+new Date((ev.result.cache&&ev.result.cache.storedAt)||Date.now()).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})+' · se refresca cada 60 s'}
-  else{$('#dot').className='dot';msg(ERR[ev.error.code]||('Error al leer la hoja: '+ev.error.message))}},{refetchInterval:60000});
- w('Cosecha!A1:Z2000',v=>{RAW=parseRows(v);buildFilters();render()});
- w('Objetivos!A1:Z200',v=>{OBJ=parseObj(v);render()});
+  try {
+    const hasClaude = !!(window.claude && typeof window.claude.use === 'function');
+    if (hasClaude) {
+      const mcp = await claude.use('mcp');
+      if (mcp) {
+        const w=(range,fn)=>mcp.watchTool(SRV,'get_values',{spreadsheetId:SHEET,range},ev=>{if(ev.type==='data'){let p=ev.result.payload;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p=null}}fn((p&&p.values)||[]);msg('');$('#dot').className='dot on';$('#upd').textContent='En vivo · actualizado '+new Date((ev.result.cache&&ev.result.cache.storedAt)||Date.now()).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})+' · se refresca cada 60 s'}else{$('#dot').className='dot';msg(ERR[ev.error.code]||('Error al leer la hoja: '+ev.error.message))}},{refetchInterval:60000});
+        w('Cosecha!A1:Z2000',v=>{RAW=parseRows(v);buildFilters();render()});
+        w('Objetivos!A1:Z200',v=>{OBJ=parseObj(v);render()});
+        return;
+      }
+    }
+  }catch(e){}
+  await loadStaticData();
 }
 init();
 </script></body>

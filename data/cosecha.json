@@ -1,0 +1,7 @@
+[
+  {"fecha":"01/02/2025","lote":"L-101","genetica":"Negro","hectareas":"12","bolsas":"120","kg":"6720","campana":"24-25","provincia":"San Luis","localidad":"Piedra Larga","cultivo":"Poroto","ciclo":"C1","antecesor":"Trigo"},
+  {"fecha":"02/02/2025","lote":"L-101","genetica":"Negro","hectareas":"12","bolsas":"130","kg":"7280","campana":"24-25","provincia":"San Luis","localidad":"Piedra Larga","cultivo":"Poroto","ciclo":"C1","antecesor":"Trigo"},
+  {"fecha":"03/02/2025","lote":"L-202","genetica":"Cranberry","hectareas":"8","bolsas":"90","kg":"5040","campana":"24-25","provincia":"Mendoza","localidad":"La Pampa","cultivo":"Poroto","ciclo":"C2","antecesor":"Maíz"},
+  {"fecha":"04/02/2025","lote":"L-202","genetica":"Cranberry","hectareas":"8","bolsas":"95","kg":"5320","campana":"24-25","provincia":"Mendoza","localidad":"La Pampa","cultivo":"Poroto","ciclo":"C2","antecesor":"Maíz"},
+  {"fecha":"05/02/2025","lote":"L-303","genetica":"Negro","hectareas":"15","bolsas":"142","kg":"7952","campana":"24-25","provincia":"Córdoba","localidad":"Villa Dolores","cultivo":"Poroto","ciclo":"C1","antecesor":"Soja"}
+]
