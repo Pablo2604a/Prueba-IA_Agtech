@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tablero de Cosecha</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f2fb;--card:#fff;--tx:#241b3a;--mut:#7a7194;--bd:#e6e1f2;--p1:#3b1678;--p2:#7c3aed;--ok:#059669;--bad:#dc2626}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14101f;--card:#1e1830;--tx:#ece8f7;--mut:#a79fc0;--bd:#2f2745;--p1:#2a1158}}
+:root[data-theme="dark"]{--bg:#14101f;--card:#1e1830;--tx:#ece8f7;--mut:#a79fc0;--bd:#2f2745;--p1:#2a1158}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:linear-gradient(120deg,var(--p1),var(--p2) 70%,#a78bfa);color:#fff;padding:18px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:21px;letter-spacing:.2px}
+header p{margin:2px 0 0;opacity:.85;font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;margin-right:6px}
+.dot.on{background:#34d399}
+button{font:inherit;cursor:pointer;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;border-radius:8px;padding:7px 12px}
+button:hover{background:rgba(255,255,255,.28)}
+main{padding:16px 20px;max-width:1400px;margin:auto}
+#msg{display:none;background:#fef3c7;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;align-items:end}
+label{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;display:flex;flex-direction:column;gap:4px}
+select,summary{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 9px;width:100%}
+summary{cursor:pointer;text-transform:none;letter-spacing:0;list-style:none}
+details{position:relative}
+details>div{position:absolute;z-index:5;top:100%;left:0;right:0;margin-top:4px;background:var(--card);border:1px solid var(--bd);border-radius:8px;max-height:220px;overflow:auto;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+details label{flex-direction:row;align-items:center;text-transform:none;letter-spacing:0;font-size:13px;color:var(--tx);padding:3px 4px}
+.clr{background:var(--p2);border-color:var(--p2);padding:8px}
+.grid{display:grid;gap:12px;margin-bottom:12px}
+.kp{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.c2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;box-shadow:0 1px 3px rgba(60,20,120,.06)}
+.k span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.k b{display:block;font-size:26px;color:var(--p2);margin:2px 0}
+.k small{color:var(--mut)}
+h3{margin:0 0 10px;font-size:14px}
+.cv{position:relative;height:290px}
+.row{margin:8px 0}
+.row div:first-child{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.bar{height:9px;border-radius:6px;background:var(--bd);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#a78bfa,var(--p2))}
+.mut{color:var(--mut);font-size:12px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+th,td{padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left}
+th{position:sticky;top:0;background:var(--card);color:var(--mut);font-size:11px;text-transform:uppercase}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tfoot td{font-weight:700;color:var(--p2)}
+.tag{padding:2px 8px;border-radius:10px;font-size:11px;color:#fff}
+</style></head>
+<body>
+<header>
+ <div><h1>🌱 Tablero de Cosecha</h1><p><span class="dot" id="dot"></span><span id="upd">Conectando con Google Sheets…</span></p></div>
+ <button id="th" type="button">🌙 Modo oscuro</button>
+</header>
+<main>
+ <div id="msg"></div>
+ <div class="filters">
+  <label>Campaña<select data-k="camp" id="f-camp"></select></label>
+  <label>Provincia<select data-k="prov" id="f-prov"></select></label>
+  <label>Localidad<details id="loc"><summary id="locs">Todas</summary><div id="locl"></div></details></label>
+  <label>Cultivo<select data-k="cult" id="f-cult"></select></label>
+  <label>Genética<select data-k="gen" id="f-gen"></select></label>
+  <label>Ciclo<select data-k="ciclo" id="f-ciclo"></select></label>
+  <button class="clr" id="clr" type="button">Limpiar</button>
+ </div>
+ <div class="grid kp" id="kpis"></div>
+ <div class="grid c2">
+  <div class="card"><h3>Avance de la semana vs objetivo</h3><div id="wk"></div></div>
+  <div class="card"><h3>Avance por genética</h3><div id="gn"></div></div>
+ </div>
+ <div class="grid c2">
+  <div class="card"><h3>Cosecha diaria (kg) y acumulado</h3><div class="cv"><canvas id="c1"></canvas></div></div>
+  <div class="card"><h3>Semanas: real vs objetivo (kg)</h3><div class="cv"><canvas id="c2"></canvas></div></div>
+ </div>
+ <div class="grid c2">
+  <div class="card"><h3>Rinde por lote (kg/ha)</h3><div class="cv" id="c3w"><canvas id="c3"></canvas></div></div>
+  <div class="card"><h3>Rinde por antecesor (kg/ha)</h3><div class="cv"><canvas id="c4"></canvas></div><p class="mut" id="antn"></p></div>
+ </div>
+ <div class="card"><h3>Detalle de cosecha</h3><div class="tw" id="tbl"></div></div>
+</main>
+<script>
+const SHEET='1wSDzmBkWzBdjrhq3gZayjrNqdBg6jjudQsnoY6FFvUE',SRV='Google Sheets',SD='Sin dato';
+const CFG={CULT:'Poroto',SUP:{Negro:250,Cranberry:95}}; // superficie total por genética (según hoja LEEME)
+const PAL=['#7c3aed','#f59e0b','#10b981','#ec4899','#06b6d4','#ef4444','#84cc16'];
+let RAW=[],OBJ=[],F={camp:'',prov:'',loc:new Set(),cult:'',gen:'',ciclo:''},GC={},CH={};
+const $=s=>document.querySelector(s),root=document.documentElement;
+const nz=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+const num=v=>{v=String(v??'').trim();if(!v)return 0;v=/^\d{1,3}(\.\d{3})+$/.test(v)?v.replace(/\./g,''):v.replace(',','.');return parseFloat(v)||0};
+const pdate=v=>{const m=String(v||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);return m?new Date(+m[3],m[2]-1,+m[1],+(m[4]||0),+(m[5]||0)):null};
+const mon=d=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x};
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dm=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0');
+const fd=d=>dm(d)+'/'+d.getFullYear();
+const camp=d=>{const y=d.getFullYear(),a=d.getMonth()>=6?y:y-1;return String(a%100).padStart(2,'0')+'-'+String((a+1)%100).padStart(2,'0')};
+const f0=n=>Math.round(n||0).toLocaleString('es-UY'),pc=(a,b)=>b>0?Math.round(a/b*100):null;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function parseRows(v){if(!v.length)return[];const h=v[0].map(nz);
+ const g=(r,n)=>{const i=h.indexOf(n);return i>=0&&r[i]!=null?String(r[i]).trim():''};
+ return v.slice(1).map(r=>{const d=pdate(g(r,'fecha'));if(!d)return null;const va=g(r,'variedad');
+  return{d,lote:g(r,'lote')||'—',gen:g(r,'genetica')||va||SD,ha:num(g(r,'hectareas')),bol:num(g(r,'bolsas')),kg:num(g(r,'kg')),
+  camp:g(r,'campana')||camp(d),prov:g(r,'provincia')||SD,loc:g(r,'localidad')||SD,cult:g(r,'cultivo')||CFG.CULT,ciclo:g(r,'ciclo')||SD,ant:g(r,'antecesor')||SD}}).filter(Boolean)}
+function parseObj(v){if(!v.length)return[];const h=v[0].map(nz),c=n=>h.indexOf(n);
+ return v.slice(1).map(r=>{const d=pdate(r[c('semana')]);return d?{w:iso(mon(new Date(d.getTime()+432e5))),kg:num(r[c('objetivo_kg')]),ha:num(r[c('objetivo_hectareas')]),bol:num(r[c('objetivo_bolsas')])}:null}).filter(Boolean)}
+function agg(rows,kf){const m=new Map();rows.forEach(r=>{const k=kf(r),o=m.get(k)||{k,kg:0,ha:0,bol:0,gen:r.gen};o.kg+=r.kg;o.ha+=r.ha;o.bol+=r.bol;m.set(k,o)});return[...m.values()]}
+function buildFilters(){
+ const U=k=>[...new Set(RAW.map(r=>r[k]))].sort();
+ [['camp','Todas'],['prov','Todas'],['cult','Todos'],['gen','Todas'],['ciclo','Todos']].forEach(([k,all])=>{
+  $('#f-'+k).innerHTML=`<option value="">${all}</option>`+U(k).map(x=>`<option${F[k]===x?' selected':''}>${esc(x)}</option>`).join('')});
+ $('#locl').innerHTML=U('loc').map(x=>`<label><input type="checkbox" value="${esc(x)}"${F.loc.has(x)?' checked':''}> ${esc(x)}</label>`).join('');
+ $('#locs').textContent=F.loc.size?`${F.loc.size} seleccionada(s)`:'Todas';
+ GC={};U('gen').forEach((g,i)=>GC[g]=PAL[i%PAL.length])}
+function render(){
+ if(!RAW.length)return;
+ const cs=getComputedStyle(root),tx=cs.getPropertyValue('--tx').trim(),mut=cs.getPropertyValue('--mut').trim(),bd=cs.getPropertyValue('--bd').trim(),pp=cs.getPropertyValue('--p2').trim();
+ const rows=RAW.filter(r=>(!F.camp||r.camp===F.camp)&&(!F.prov||r.prov===F.prov)&&(!F.loc.size||F.loc.has(r.loc))&&(!F.cult||r.cult===F.cult)&&(!F.gen||r.gen===F.gen)&&(!F.ciclo||r.ciclo===F.ciclo));
+ const T=rows.reduce((a,r)=>(a.kg+=r.kg,a.ha+=r.ha,a.bol+=r.bol,a),{kg:0,ha:0,bol:0});
+ const days=agg(rows,r=>iso(r.d)).sort((a,b)=>a.k<b.k?-1:1),best=days.slice().sort((a,b)=>b.kg-a.kg)[0];
+ const kpi=(l,v,s)=>`<div class="card k"><span>${l}</span><b>${v}</b><small>${s||'&nbsp;'}</small></div>`;
+ $('#kpis').innerHTML=kpi('Kg cosechados',f0(T.kg),f0(T.kg/1000)+' toneladas')+kpi('Hectáreas',f0(T.ha),'cosechadas')+kpi('Rinde medio',f0(T.ha?T.kg/T.ha:0),'kg/ha')+kpi('Bolsas',f0(T.bol),'bolsas de 56 kg')
+  +kpi('Días de trilla',days.length,days.length?f0(T.kg/days.length)+' kg/día':'')+kpi('Mejor día',best?f0(best.kg):'–',best?'kg · '+fd(new Date(best.k+'T00:00')):'')+kpi('Lotes',new Set(rows.map(r=>r.lote)).size,'trillados');
+ // semana actual (última fecha con cosecha)
+ const ref=rows.length?new Date(Math.max(...rows.map(r=>r.d))):null;let wk='<p class="mut">Sin datos.</p>';
+ if(ref){const w=iso(mon(ref)),rw=rows.filter(r=>iso(mon(r.d))===w),R=rw.reduce((a,r)=>(a.kg+=r.kg,a.ha+=r.ha,a.bol+=r.bol,a),{kg:0,ha:0,bol:0}),O=OBJ.find(o=>o.w===w)||{kg:0,ha:0,bol:0};
+  wk=`<p class="mut">Semana del ${fd(new Date(w+'T00:00'))} · a la fecha ${fd(ref)}</p>`+[['Kg','kg'],['Hectáreas','ha'],['Bolsas','bol']].map(([l,k])=>{const p=pc(R[k],O[k]);
+   return `<div class="row"><div><span>${l}</span><span>${f0(R[k])} / ${O[k]?f0(O[k]):'sin objetivo'}${p!=null?' · <b>'+p+'%</b>':''}</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%"></i></div></div>`}).join('')}
+ $('#wk').innerHTML=wk;
+ // por genética
+ $('#gn').innerHTML=agg(rows,r=>r.gen).map(o=>{const s=CFG.SUP[o.k],p=pc(o.ha,s);
+  return `<div class="row"><div><span><i class="tag" style="background:${GC[o.k]}">${esc(o.k)}</i></span><span>${f0(o.ha)}${s?' / '+f0(s)+' ha · <b>'+p+'%</b>':' ha'} · ${f0(o.kg)} kg · ${f0(o.ha?o.kg/o.ha:0)} kg/ha</span></div><div class="bar"><i style="width:${Math.min(100,p||0)}%;background:${GC[o.k]}"></i></div></div>`}).join('')||'<p class="mut">Sin datos.</p>';
+ if(!window.Chart)return;
+ Chart.defaults.color=mut;Chart.defaults.borderColor=bd;
+ const mk=(id,cfg)=>{CH[id]&&CH[id].destroy();cfg.options=Object.assign({responsive:true,maintainAspectRatio:false},cfg.options);CH[id]=new Chart($('#'+id),cfg)};
+ let ac=0;const gens=[...new Set(rows.map(r=>r.gen))];
+ mk('c1',{data:{labels:days.map(d=>dm(new Date(d.k+'T00:00'))),datasets:[...gens.map(g=>({type:'bar',label:g,stack:'s',backgroundColor:GC[g],borderRadius:3,
+  data:days.map(d=>rows.filter(r=>iso(r.d)===d.k&&r.gen===g).reduce((a,r)=>a+r.kg,0))})),
+  {type:'line',label:'Acumulado',yAxisID:'y1',borderColor:pp,backgroundColor:pp,pointRadius:2,tension:.25,data:days.map(d=>ac+=d.kg)}]},
+  options:{scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'kg/día'}},y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'kg acum.'}}}}});
+ const wr=agg(rows,r=>iso(mon(r.d))),ws=[...new Set([...wr.map(x=>x.k),...OBJ.filter(o=>o.kg>0).map(o=>o.w)])].sort();
+ mk('c2',{type:'bar',data:{labels:ws.map(w=>dm(new Date(w+'T00:00'))),datasets:[{label:'Real',backgroundColor:pp,borderRadius:4,data:ws.map(w=>(wr.find(x=>x.k===w)||{kg:0}).kg)},
+  {label:'Objetivo',backgroundColor:'#c4b5fd',borderRadius:4,data:ws.map(w=>(OBJ.find(o=>o.w===w)||{kg:0}).kg)}]},options:{scales:{x:{title:{display:true,text:'semana (lunes)'}}}}});
+ const lt=agg(rows,r=>r.lote).map(o=>({...o,r:o.ha?o.kg/o.ha:0})).sort((a,b)=>b.r-a.r);
+ $('#c3w').style.height=Math.max(260,lt.length*28+40)+'px';
+ mk('c3',{type:'bar',data:{labels:lt.map(o=>o.k),datasets:[{label:'kg/ha',data:lt.map(o=>Math.round(o.r)),backgroundColor:lt.map(o=>GC[o.gen]),borderRadius:4}]},options:{indexAxis:'y',plugins:{legend:{display:false}}}});
+ const an=agg(rows,r=>r.ant).map(o=>({...o,r:o.ha?o.kg/o.ha:0})).sort((a,b)=>b.r-a.r);
+ mk('c4',{type:'bar',data:{labels:an.map(o=>o.k),datasets:[{label:'kg/ha',data:an.map(o=>Math.round(o.r)),backgroundColor:pp,borderRadius:4}]},
+  options:{plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>f0(an[c.dataIndex].ha)+' ha · '+f0(an[c.dataIndex].kg)+' kg'}}}}});
+ $('#antn').textContent=an.length===1&&an[0].k===SD?'La hoja Cosecha no tiene columna "Antecesor": agregala (también Provincia, Localidad, Ciclo, Genética) y se completa sola.':'';
+ // tabla
+ const th=['Fecha','Lote','Cultivo','Genética','Ciclo','Antecesor','Provincia','Localidad','Campaña'],tn=['Ha','Bolsas','Kg','Kg/ha'];
+ $('#tbl').innerHTML=`<table><thead><tr>${th.map(x=>`<th>${x}</th>`).join('')}${tn.map(x=>`<th class="n">${x}</th>`).join('')}</tr></thead><tbody>`+
+  rows.slice().sort((a,b)=>b.d-a.d||(a.lote<b.lote?-1:1)).map(r=>`<tr><td>${fd(r.d)}</td><td>${esc(r.lote)}</td><td>${esc(r.cult)}</td><td><i class="tag" style="background:${GC[r.gen]}">${esc(r.gen)}</i></td><td>${esc(r.ciclo)}</td><td>${esc(r.ant)}</td><td>${esc(r.prov)}</td><td>${esc(r.loc)}</td><td>${esc(r.camp)}</td><td class="n">${f0(r.ha)}</td><td class="n">${f0(r.bol)}</td><td class="n">${f0(r.kg)}</td><td class="n">${f0(r.ha?r.kg/r.ha:0)}</td></tr>`).join('')+
+  `</tbody><tfoot><tr><td colspan="9">Total (${rows.length} registros)</td><td class="n">${f0(T.ha)}</td><td class="n">${f0(T.bol)}</td><td class="n">${f0(T.kg)}</td><td class="n">${f0(T.ha?T.kg/T.ha:0)}</td></tr></tfoot></table>`}
+// filtros
+document.addEventListener('change',e=>{const t=e.target;
+ if(t.dataset.k){F[t.dataset.k]=t.value}else if(t.closest('#locl')){t.checked?F.loc.add(t.value):F.loc.delete(t.value);$('#locs').textContent=F.loc.size?`${F.loc.size} seleccionada(s)`:'Todas'}else return;render()});
+$('#clr').onclick=()=>{F={camp:'',prov:'',loc:new Set(),cult:'',gen:'',ciclo:''};buildFilters();render()};
+document.addEventListener('click',e=>{if(!e.target.closest('#loc'))$('#loc').open=false});
+// tema
+const setTh=t=>{root.dataset.theme=t;$('#th').textContent=t==='dark'?'☀️ Modo claro':'🌙 Modo oscuro';try{localStorage.setItem('th',t)}catch(e){}render()};
+$('#th').onclick=()=>setTh(root.dataset.theme==='dark'?'light':'dark');
+{let t;try{t=localStorage.getItem('th')}catch(e){}root.dataset.theme=t||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');$('#th').textContent=root.dataset.theme==='dark'?'☀️ Modo claro':'🌙 Modo oscuro'}
+// datos en vivo (conector Google Sheets)
+const msg=t=>{const m=$('#msg');m.textContent=t||'';m.style.display=t?'block':'none'};
+const ERR={needs_reauth:'Reconectá Google Sheets en Ajustes → Conectores.',server_not_connected:'Agregá el conector Google Sheets en Ajustes → Conectores.',not_in_manifest:'Permiso denegado para Google Sheets en este tablero.',blocked_by_policy:'Tu organización bloquea este conector.',server_unavailable:'Google Sheets no responde; se reintenta solo.'};
+async function init(){
+ const mcp=window.claude&&await claude.use('mcp');
+ if(!mcp){$('#upd').textContent='Sin conexión';return msg('Abrí este tablero desde claude.ai con el conector Google Sheets activo para leer los datos en vivo.')}
+ const w=(range,fn)=>mcp.watchTool(SRV,'get_values',{spreadsheetId:SHEET,range},ev=>{
+  if(ev.type==='data'){let p=ev.result.payload;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p=null}}
+   fn((p&&p.values)||[]);msg('');$('#dot').className='dot on';
+   $('#upd').textContent='En vivo · actualizado '+new Date((ev.result.cache&&ev.result.cache.storedAt)||Date.now()).toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'})+' · se refresca cada 60 s'}
+  else{$('#dot').className='dot';msg(ERR[ev.error.code]||('Error al leer la hoja: '+ev.error.message))}},{refetchInterval:60000});
+ w('Cosecha!A1:Z2000',v=>{RAW=parseRows(v);buildFilters();render()});
+ w('Objetivos!A1:Z200',v=>{OBJ=parseObj(v);render()});
+}
+init();
+</script></body></html>
